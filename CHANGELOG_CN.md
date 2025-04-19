@@ -1,14 +1,183 @@
-# 更新日志 
+# 更新日志
 
-**最近更新： 2025-01-28**
+**最近更新： 2025-04-08**
+
+**通知:** 本节中的更改将逐步推出,需要一周时间才能完成.
+
+* 新的错误代码 `-2039`，如果查询同时具有 `orderId` 和 `origClientOrderId` 的订单，并且未找到具有此组合的订单.
+  * 受影响的请求:
+    * REST API:`GET /api/v3/order`
+    * WebSocket API:`order.status`
+* [错误代码文档](errors_CN.md) 在错误代码 `-1034` 中更新了新的错误消息, 当超过 FIX 连接速率限制时会出现。(更多细节参看昨天的 [更新](#2025-04-07))
+
+---
+
+### 2025-04-07
+
+#### 常规更改
+
+**通知:** 本节中的更改将逐步推出,需要一周时间才能完成.
+
+* 在2025 年 1 月 16 日，FIX Market Data 会话的连接限制从 5 个增加到了 100 个。这个改变没有在之前的更改日志中被明示。
+* 新的错误代码 `-2038`，将在保留优先权的修改订单请求失败时出现。
+* 错误代码 `-1034` 有了新消息。
+* 如果未成交订单计数超过了在 `intervalNum:DAY` 里定义的限制, 那么 `intervalNum:SECOND` 下的未成交订单计数将不再递增。
+* 以前，无论提供的参数如何，myTrades 请求的权重都是 20。现在，如果您提供 `orderId` ，请求的权重将为 5。
+  * REST API：`GET /api/v3/myTrades`
+  * WebSocket API：`myTrades`
+* 查询和删除订单的变化：
+  * 现在，当 `orderId` 和 `origClientOrderId` 都不存在时，请求将被拒绝，并显示 `-1102` 而不是 `-1128`。
+  * 受影响的请求：
+    * REST API：
+      * `GET /api/v3/order`
+      * `DELETE /api/v3/order`
+    * WebSocket API：
+      * `order.status`
+      * `order.cancel`
+    * FIX API：
+      * OrderCancelRequest `<F>`
+
+#### FIX API
+
+**通知:** 以下变更将于 2025 年 4 月 21 日期间发生。
+
+* FIX API 会验证 `EncryptMethod(98)` 在登录 Logon `<A>` 时是否为 0。
+* FIX 订单接入会话的每个账户有 10 个并发 TCP 连接的限制。
+* 现在强制实施连接速率限制.请注意，这些限制是针对账户和 IP 地址独立检查的。
+  * FIX 订单接入会话：在 30 秒内 15 次连接尝试的限制
+  * FIX Drop Copy 会话：在 30 秒内 15 次连接尝试的限制。
+  * FIX Market Data 会话：在 300 秒内 300 次连接尝试的限制。
+* News `<B>` 在 Headline 字段中包括了一个倒计时消息。
+  * 在本次更新完成后： 当服务器进入维护状态时，将向客户端**每隔 10 秒发送一条** `News` 消息，并**持续 10 分钟**。在10分钟过后，客户端将被注销，其会话将被关闭。
+* OrderCancelRequest `<F>` 和 OrderCancelRequestAndNewOrderSingle `<XCN>` 现在允许使用 `orderId` 和 `clientOrderId`。
+* [FIX 订单接入会话的 QuickFix 模式](https://github.com/binance/binance-spot-api-docs/blob/master/fix/schemas/spot-fix-oe.xml) 已被更新，将支持保留优先级的修改订单请求（Order Amend Keep Priority）和新的 STP 方式 `DECREMENT`。
+
+#### User Data Streams
+
+* **我们将弃用此功能： 通过使用 `listenKey` 来访问 wss://stream.binance.com:9443 以监听账户信息的。**
+    * 以后但不是当前，此功将被能从我们的系统中删除。
+* **您应该通过订阅 [在 WebSocket API 内的账户信息流](web-socket-api_CN.md) 来获得用户账户更新。**
+  * 这个方式会提供稍好的性能 **（较低的延迟）**。
+  * 必须使用 Ed25519 API 密钥
+* 在未来的更新中，将删除有关账户数据流的 WebSocket 基本访问地址的信息。
+* 在未来的更新中，以下请求将被从文档中删除：
+    * `POST /api/v3/userDataStream`
+    * `PUT /api/v3/userDataStream`
+    * `DELETE /api/v3/userDataStream`
+    * `userDataStream.start`
+    * `userDataStream.ping`
+    * `userDataStream.stop`
+* [WebSocket 账户接口文档](user-data-stream_CN.md) 将保留可以接收的有效负载，以供您参考。
+
+#### 将会发生的更改
+
+以下变更将于**2025 年 4 月 24 日 07:00 UTC**发生：
+
+* [保留优先级的修改订单请求（Order Amend Keep Priority）](https://github.com/binance/binance-spot-api-docs/blob/master/faqs/order_amend_keep_priority_CN.md) 将可以使用。 (请注意，必须在相应交易对上启用该功能后才能使用。)
+  * 新字段 `amendAllowed` 会出现在 Exchange Information 响应中。
+    * REST API： `GET /api/v3/exchangeInfo`
+    * WebSocket API： `exchangeInfo`
+  * FIX API：新的 Order Entry 消息 **OrderAmendKeepPriorityRequest** 和 **OrderAmendReject**
+  * REST API：`PUT /api/v3/order/amend/keepPriority`
+  * WebSocket API： `order.amend.keepPriority`
+* 如果已在交易对上作了相应配置，那么 STP 方式 `DECREMENT` （递减） 将在 Exchange Information 中可见。
+  * 通过不仅仅使挂单或吃单过期,或无条件地让两种订单都过期，STP 递减会减少**两种**订单的可用数量，并将通过阻止匹配的数量来增加**两种**订单的 `prevented quantity` 值。
+  * 这将使可用数量较少的订单过期，因为(`filled quantity` \+ `prevented quantity`)等于 `order quantity`。如果两个订单的可用数量相等，那么两个订单都将过期。这种情况被称为“递减”，因为可用数量减少了。
+* 使用 `orderId` 和 `origClientOrderId/cancelOrigClientOrderId` 来查询和/或取消订单：
+  * 以前，当两个参数都提供时，在各个端点的上行为并不一致。
+  * 以后，当同时提供两个参数时，系统首先将会使用订单的 `orderId` 来搜索订单。如果订单被找到， `origClientOrderId`/`cancelOrigClientOrderId` 的值将会被用来验证被找到的订单。如果两个检测条件都通过，那么请求成功。如果两个条件都不满足，则请求将被拒绝。
+  * 受影响的请求：
+    * REST API：
+      * `GET /api/v3/order`
+      * `DELETE /api/v3/order`
+      * `POST /api/v3/order/cancelReplace`
+    * WebSocket API：
+      * `order.status`
+      * `order.cancel`
+      * `order.cancelReplace`
+    * FIX API：
+      * OrderCancelRequest `<F>`
+      * OrderCancelRequestAndNewOrderSingle `<XCN>`
+* 使用 `listOrderId` 和 `listClientOrderId` 来取消订单:
+  * 以前，当两个参数都提供时，在各个端点的上行为并不一致。
+  * 以后，当同时提供两个参数时，系统首先将会使用 `listOrderId` 来搜索订单列表。如果找到相应的订单列表，`listClientOrderId` 将会被用来验证被找到的订单列表。如果两个条件都不满足，请求将被拒绝。
+  * 受影响的请求
+    * REST API
+      * `DELETE /api/v3/orderList`
+    * WebSocket API
+      * `orderList.cancel`
+* **SBE： 新模式 3:0 ([spot_3_0.xml](https://github.com/binance/binance-spot-api-docs/blob/master/sbe/schemas/spot_3_0.xml)) 将可以使用。**
+  * 现行模式 2:1 ([spot_2_1.xml](https://github.com/binance/binance-spot-api-docs/blob/master/sbe/schemas/spot_2_1.xml)) 将会被废止并根据我们的废止政策，在6个月内停止使用。
+  * 请注意：在新模式被发布前，尝试使用模式 3:0 将导致错误。
+  * 3:0 中的更改：
+    * 将会支持保留优先级的修改订单（Order Amend Keep Priority）请求:
+      * 在 ExchangeInfoResponse 中添加了 `amendAllowed` 字段。
+      * 新消息 `OrderAmendmentsResponse` 和 `OrderAmendKeepPriorityResponse`。
+    * 所有的枚举类型都有了新变量：`NON_REPRESENTABLE`。这将用于将来，对新的枚举值进行编码。新模式的枚举类型可能会与 3:0 不兼容。
+    * 新增针对 `selfTradePreventionMode` 和 `allowedSelfTradePreventionModes` 的新枚举变量 `DECREMENT`。
+    * `symbolStatus` 枚举下的值 `AUCTION_MATCH`， `PRE_TRADING` 以及 `POST_TRADING` 已被删除。
+    * 字段 `usedSor`, `orderCapacity`， `workingFloor`，`preventedQuantity` 以及 `matchType` 将不再是可选的参数。
+    * 更改了 `ExecutionReportEvent`：现在，字段 `orderCreationTime` 是可选的。
+  * 通过 WebSocket API 来使用被废止的 2:1 版本的模式来侦听账户数据流：
+    * `ListStatusEvent` 的字段 `listStatusType` 在 `Updated` 时，会呈现为 `ExecStarted`。升级到模式 3:0 来获取正确的值。
+    * `ExecutionReportEvent` 的字段 `selfTradePreventionMode` 在 `Decrement` 时，会呈现为 `None`。 这将只在 `executionType` 为 `TradePrevention` 时发生。
+    * `ExecutionReportEvent` 的字段 `orderCreationTime` 在没有值时将呈现为 -1。
+  * 所有低于 3:0 版本的模式不会支持对保留优先级修改订单请求（Order Amend Keep Priority）的响应，以及任何可能包含 STP 方式 `DECREMENT` 的响应（比如，Exchange Information，下单，取消订单或查询您的订单状态）。当响应无法用被指定的模式来表达时，系统将返回错误。
+
+---
+
+### 2025-04-03
+
+关注 SPOT 测试网的最新更新,将 WebSocket API 中的 URL 更新为 [SPOT Testnet] 的最新 URL(https://testnet.binance.vision/).
+
+---
+
+### 2025-03-31
+
+* 添加了对取消订单性能的说明.
+
+---
+
+### 2025-03-10
+
+* **注意：以下变更将于 2025 年 3 月 13 日 09:00 UTC 发生。**
+  * FIX Drop Copy 会话的限制将会为**每分钟 60 条消息**。
+  * FIX Market Data 会话的限制将会为**每分钟 2000 条消息**。
+  * FIX API 文档已更新，以反映即将发生的更改。
+* **SBE 市场数据流将于 2025 年 3 月 18 日 07:00 UTC 上线。** 这些流会提供较小的有效负载，将为部分对延迟比较敏感的市场数据连接提供更快的响应时间。
+  * 以 SBE 格式提供的数据流：
+  * 实时：逐笔交易
+  * 实时：最优挂单信息
+    * 每 100 毫秒：增量深度信息
+  * 每 100 毫秒：有限档深度信息
+  * 有关更多信息，请参阅 [SBE 市场数据连流](sbe-market-data-streams_CN.md)。
+
+---
+
+### 2025-03-05
+
+* **注意：以下变更将于 2025 年 3 月 10 日 12:00 UTC 发生。** <br>
+  以下请求权重将从 2 增加到 4：
+  * REST API： `GET /api/v3/aggTrade`
+  * WebSocket API： `trades.aggregate`
+* REST 和 WebSocket API 的文档均已更新，以反映即将发生的更改。
+
+---
+
+### 2025-02-12
+
+* **注意：这些更改将于 2025 年 2 月 26 日 05：00 UTC 生效。请确保在此之前您已下载最新的模式。
+* `AggressorSide （2446)` 将在 FIX 市场数据流中提供。QuickFIX 模式 [file](https://github.com/binance/binance-spot-api-docs/blob/master/fix/schemas/spot-fix-md.xml) 也已更新。
+
+---
 
 ### 2024-01-28
 
-**注意: 该变更会在2025年2月3日到2025年2月14日之间逐步推出。** 
+**注意: 该变更会在2025年2月3日到2025年2月14日之间逐步推出。**
 
 * **以下变更将会同时应用于WebSocket 市场数据流，WebSocket 账户接口 和 WebSocket API:**
-    * WebSocket 服务将会**每20秒**发送发送 PING 消息而不是每3分钟。  
-    * PONG 消息的延迟将会是每1分钟而不是每10分钟。  
+    * WebSocket 服务将会**每20秒**发送发送 PING 消息而不是每3分钟。
+    * PONG 消息的延迟将会是每1分钟而不是每10分钟。
     * 相关服务的更改所对应的文档都已经更新。
 
 ---
@@ -28,53 +197,51 @@
 
 WebSocket Streams
 
-* 可以在连接 URL 中使用新的可选参数 `timeUnit` 来选择时间单位。 
-  * 例如：`/stream？streams=btcusdt@trade&timeUnit=millisecond` 
-  * 支持的值为： 
-    * `MILLISECOND`  
-    * `millisecond`  
-    * `MICROSECOND`  
-    * `microsecond`  
+* 可以在连接 URL 中使用新的可选参数 `timeUnit` 来选择时间单位。
+  * 例如：`/stream？streams=btcusdt@trade&timeUnit=millisecond`
+  * 支持的值为：
+    * `MILLISECOND`
+    * `millisecond`
+    * `MICROSECOND`
+    * `microsecond`
   * 如果未选择时间单位，则默认使用毫秒。
 
 REST API
 
-* 可以在请求中发送新的可选报文头 `X-MBX-TIME-UNIT` 来选择时间单位。 
-  * 支持的值： 
-    * `MILLISECOND`  
-    * `millisecond`  
-    * `MICROSECOND`  
-    * `microsecond`  
-  * 时间单位会影响 JSON 响应中的时间戳字段（例如，`time`、`transactTime`）。 
-    * 无论时间单位如何，SBE 响应都将继续以微秒为单位。 
-  * 如果未选择时间单位，则默认使用毫秒。  
+* 可以在请求中发送新的可选报文头 `X-MBX-TIME-UNIT` 来选择时间单位。
+  * 支持的值：
+    * `MILLISECOND`
+    * `millisecond`
+    * `MICROSECOND`
+    * `microsecond`
+  * 时间单位会影响 JSON 响应中的时间戳字段（例如，`time`、`transactTime`）。
+    * 无论时间单位如何，SBE 响应都将继续以微秒为单位。
+  * 如果未选择时间单位，则默认使用毫秒。
 * 时间戳参数（例如 'startTime'、'endTime'、'timestamp）' 现在可以以毫秒或微秒为单位传递。
 
 WebSocket API
 
-* 可以在连接 URL 中使用新的可选参数 `timeUnit` 来选择时间单位。  
-  * 支持的值： 
-    * `MILLISECOND`   
-    * `millisecond`  
-    * `MICROSECOND`  
+* 可以在连接 URL 中使用新的可选参数 `timeUnit` 来选择时间单位。
+  * 支持的值：
+    * `MILLISECOND`
+    * `millisecond`
+    * `MICROSECOND`
     * `microsecond`
-  * 时间单位会影响 JSON 响应中的时间戳字段（例如，`time`、`transactTime`）。 
-    * 无论时间单位如何，SBE 响应都将继续以微秒为单位。 
-  * 如果未选择时间单位，则默认使用毫秒。  
+  * 时间单位会影响 JSON 响应中的时间戳字段（例如，`time`、`transactTime`）。
+    * 无论时间单位如何，SBE 响应都将继续以微秒为单位。
+  * 如果未选择时间单位，则默认使用毫秒。
 * 时间戳参数（例如 `startTime`、`endTime`、`timestamp`） 现在可以以毫秒或微秒为单位传递。
 
 User Data Streams
 
-* 可以在连接 URL 中使用新的可选参数 `timeUnit` 来选择时间单位。  
-  * 支持的值  
-    * `MILLISECOND`   
+* 可以在连接 URL 中使用新的可选参数 `timeUnit` 来选择时间单位。
+  * 支持的值
+    * `MILLISECOND`
     * `MICROSECOND`
-    * `microsecond`  
+    * `microsecond`
     * `millisecond`
 
---- 
-
-**最近更新： 2024-12-09**
+---
 
 ### 2024-12-09
 
@@ -82,8 +249,8 @@ User Data Streams
 
 常规更改：
 
- * 现在会拒绝距离过去或未来太远的时间戳参数值。 
-  * 时间戳数值在 2017 年 1 月 1 日之前（小于 1483228800000） 
+ * 现在会拒绝距离过去或未来太远的时间戳参数值。
+  * 时间戳数值在 2017 年 1 月 1 日之前（小于 1483228800000）
   * 时间戳数值超过当前时间 10 秒以后（例如，如果当前时间为 1729745280000, 那么使用 1729745290000 或更大是错误的）
 * 如果 `startTime` 和/或 `endTime` 的值超出范围，数值会被调整至正确的范围。
 * 已将 `quote order quantity` （`origQuoteOrderQty`） 字段添加到原先没有该字段的响应中。请注意，对于下单相关的接口，该字段将仅针对 `newOrderRespType` 设置为 `RESULT` 或 `FULL` 的请求显示。
@@ -115,39 +282,39 @@ User Data Streams
 SBE
 
 * 已发布新模式 2:1 [spot_2_1.xml](https://github.com/binance/binance-spot-api-docs/blob/master/sbe/schemas/spot_2_1.xml)。 当前模式 2:0 [spot_2_0.xml](https://github.com/binance/binance-spot-api-docs/blob/master/sbe/schemas/spot_2_0.xml) 将被弃用。根据我们的模式弃用政策，当前模式 2:0 会将在 6个月内从 API 中停用。
-* 模式 2：1 是 模式 2：0 的向后兼容更新版本。当您请求模式 2：0 或 2：1 时，您将始终收到 2：1 格式的有效载荷。 
-* SBE 模式 2：1 中的更改： 
-  * 下单/取消订单响应中的新字段 `origQuoteOrderQty` （注意：使用 2：0 模式生成的解码器将忽略此字段）： 
-    * `NewOrderResultResponse` 
+* 模式 2：1 是 模式 2：0 的向后兼容更新版本。当您请求模式 2：0 或 2：1 时，您将始终收到 2：1 格式的有效载荷。
+* SBE 模式 2：1 中的更改：
+  * 下单/取消订单响应中的新字段 `origQuoteOrderQty` （注意：使用 2：0 模式生成的解码器将忽略此字段）：
+    * `NewOrderResultResponse`
     * `NewOrderFullResponse`
-    * `CancelOrderResponse` 
+    * `CancelOrderResponse`
     * `NewOrderListResultResponse`
     * `NewOrderListFullResponse`
-    * `CancelOrderListResponse` 
-  * 仅限 WebSocket API：会话状态响应中的新字段 `userDataStream`： 
-    * `WebSocketSessionLogonResponse` 
-    * `WebSocketSessionStatusResponse` 
-    * `WebSocketSessionLogoutResponse` 
+    * `CancelOrderListResponse`
+  * 仅限 WebSocket API：会话状态响应中的新字段 `userDataStream`：
+    * `WebSocketSessionLogonResponse`
+    * `WebSocketSessionStatusResponse`
+    * `WebSocketSessionLogoutResponse`
   * 仅限 WebSocket API：在 User Data Stream 中会支持的新消息：
-    * `UserDataStreamSubscribeResponse` 
-    * `UserDataStreamUnsubscribeResponse` 
+    * `UserDataStreamSubscribeResponse`
+    * `UserDataStreamUnsubscribeResponse`
     * `BalanceUpdateEvent`
     * `EventStreamTerminatedEvent`
-    * `ExecutionReportEvent` 
-    * `ExternalLockUpdateEvent` 
-    * `ListStatusEvent` 
+    * `ExecutionReportEvent`
+    * `ExternalLockUpdateEvent`
+    * `ListStatusEvent`
     * `OutboundAccountPositionEvent`
 
 WebSocket API
 
-* 您现在可以通过 WebSocket API 连接订阅账户数据流事件。  
-  * 请注意：此功能仅适用于使用 Ed25519 API 密钥的用户。 
-  * 请注意：如果您要订阅使用 SBE 格式的账户数据流，则需使用新的 SBE 模式 2:1。 
-* 新请求： 
+* 您现在可以通过 WebSocket API 连接订阅账户数据流事件。
+  * 请注意：此功能仅适用于使用 Ed25519 API 密钥的用户。
+  * 请注意：如果您要订阅使用 SBE 格式的账户数据流，则需使用新的 SBE 模式 2:1。
+* 新请求：
   * `userDataStream.subscribe`
-  * `userDataStream.unsubscribe` 
-* 对于 `session.logon`、 `session.status` 和 `session.logout` 的更改。 
-  * 添加了一个新字段 `userDataStream`，用于显示账户数据流订阅是否处于活跃状态。  
+  * `userDataStream.unsubscribe`
+* 对于 `session.logon`、 `session.status` 和 `session.logout` 的更改。
+  * 添加了一个新字段 `userDataStream`，用于显示账户数据流订阅是否处于活跃状态。
 * 修复了在 `session.logon` 之后使用 `userDataStream.start` 不会收到新 listenKey 的错误。
 
 User Data Stream
@@ -161,27 +328,27 @@ FIX API
 
 以下更改将在**2024 年 12 月 16 日到 2024 年 12 月 20日之间**发生：
 
-* 修复一个错误： `BUY` 方 OCO 单如果不提供 `stopPrice` 就会被阻止下单。 
-* 在 OCO 中添加了对 `TAKE_PROFIT` 和 `TAKE_PROFIT_LIMIT` 的支持。 
-  * 以前，OCO 只能由以下订单类型组成： 
-    * `LIMIT_MAKER` + '`STOP_LOSS` 
-    * `LIMIT_MAKER` + `STOP_LOSS_LIMIT` 
-  * 现在，OCO 可以由以下订单类型组成： 
+* 修复一个错误： `BUY` 方 OCO 单如果不提供 `stopPrice` 就会被阻止下单。
+* 在 OCO 中添加了对 `TAKE_PROFIT` 和 `TAKE_PROFIT_LIMIT` 的支持。
+  * 以前，OCO 只能由以下订单类型组成：
+    * `LIMIT_MAKER` + '`STOP_LOSS`
+    * `LIMIT_MAKER` + `STOP_LOSS_LIMIT`
+  * 现在，OCO 可以由以下订单类型组成：
     * `LIMIT_MAKER` + `STOP_LOSS`
-    * `LIMIT_MAKER` + `STOP_LOSS_LIMIT` 
-    * `TAKE_PROFIT` + `STOP_LOSS` 
-    * `TAKE_PROFIT` + `STOP_LOSS_LIMIT`  
-    * `TAKE_PROFIT_LIMIT` + `STOP_LOSS` 
+    * `LIMIT_MAKER` + `STOP_LOSS_LIMIT`
+    * `TAKE_PROFIT` + `STOP_LOSS`
+    * `TAKE_PROFIT` + `STOP_LOSS_LIMIT`
+    * `TAKE_PROFIT_LIMIT` + `STOP_LOSS`
     * `TAKE_PROFIT_LIMIT` + `STOP_LOSS_LIMIT`
-  * 以下请求支持此功能：  
-    * `POST /api/v3/orderList/oco` 
+  * 以下请求支持此功能：
+    * `POST /api/v3/orderList/oco`
     * `POST /api/v3/orderList/otoco`
-    * `orderList.place.oco` 
+    * `orderList.place.oco`
     * `orderList.place.otoco`
     * `NewOrderList<E>`
   * 错误代码 -1167 将在此次更新后过时，并将在以后的更新中从文档中删除。
 
----  
+---
 
 ### 2024-10-18
 
@@ -202,7 +369,7 @@ Exchange Information 的更改 （即 REST API 的 [`GET /api/v3/exchangeInfo`](
 
 ---
 
-### 2024-08-26 
+### 2024-08-26
 
 * [现货未成交订单计数规则](./faqs/order_count_decrement_CN.md)  已更新，解释了如何在下订单时减少未成交的订单数量。
 
@@ -235,7 +402,7 @@ Exchange Information 的更改 （即 REST API 的 [`GET /api/v3/exchangeInfo`](
 常规更改：
 
 * 修复了 klines 的时间戳不正确的 bug。
-  * REST API： 带有 `timeZone` 参数的 `GET /api/v3/klines` 和 `GET /api/v3/uiKlines` 
+  * REST API： 带有 `timeZone` 参数的 `GET /api/v3/klines` 和 `GET /api/v3/uiKlines`
   * WebSocket API： 带有 `timeZone` 参数的 `klines` 和 `uiKlines`
   * WebSocket Streams: `<symbol>@kline_<interval>@+08：00`
 
@@ -253,7 +420,7 @@ Exchange Information 的更改 （即 REST API 的 [`GET /api/v3/exchangeInfo`](
             * `orderList.place.otoco`
 * 在 **6月18日 UTC 时间 05:00**，我们将会把买方的订单 ID（`b`） 和卖方的订单 ID（`a`） 从交易流中删除（i.e. `<symbol>@trade`）。 （请注意，我们可能需要花几个小时来部署到所有服务器。）
     * [WebSocket 账户接口](web-socket-streams_CN.md) 与其相关的文档已经被更改了。
-    * 要监控您的订单是否是交易的一部分，请订阅 [WebSocket 账户接口](user-data-stream_CN.md)。          
+    * 要监控您的订单是否是交易的一部分，请订阅 [WebSocket 账户接口](user-data-stream_CN.md)。
 
 ---
 
@@ -281,7 +448,7 @@ WebSocket Streams
 
 ### 2024-04-10
 
-以下更新的生效时间已被推迟到 **4月25日 05：00 UTC** 
+以下更新的生效时间已被推迟到 **4月25日 05：00 UTC**
 
 * "交易规范信息"响应中的交易对权限信息已从字段 `permissions` 移至字段 `permissionSets`。
 * 字段 `permissions` 将为空，并将在未来版本中删除。
@@ -510,6 +677,8 @@ User Data Streams
 * **下单量的退回(`Order decrement`)功能在 06:15 UTC上线.**
 * 此功能的更详细信息, 请参考 [FAQ](./faqs/order_count_decrement_CN.md)
 
+---
+
 ### 2023-08-25
 
 * Websocket API 的 `exchangeInfo` 中的 `RAW REQUESTS` 被移除，新增了用于表示WebSocket连接数限制的 `CONNECTIONS`。
@@ -522,6 +691,7 @@ User Data Streams
 * 下表的 REST API 和 WebSocket API 请求的权重被调整:
 
 |请求接口|之前请求权重| 新请求权重|
+|----   |----                   | ----                   |
 |`GET /api/v3/order` <br> `order.status` |2 | 4|
 |`GET /api/v3/orderList` <br> orderList.status| 2|4|
 |`GET /api/v3/openOrders` <br> `openOrders.status` - **带 `symbol`**|3|6|
@@ -559,6 +729,7 @@ User Data Streams
 |`PUT /api/v3/userDataStream` <br> `userDataStream.ping`|1|2|
 |`DELETE /api/v3/userDataStream`<br> `userDataStream.stop`|1|2|
 
+---
 
 ### 2023-08-08
 
@@ -590,8 +761,8 @@ USER DATA STREAM
 
 * `executionReport` 变动：
     * 以下这些字段只适用于下单时使用 SOR 的情况：
-        * 新字段 `b` 代表 `matchType` 
-        * 新字段 `a` 代表 `allocId` 
+        * 新字段 `b` 代表 `matchType`
+        * 新字段 `a` 代表 `allocId`
         * 新字段 `k` 代表 `workingFloor`
     * 这个字段只适用于订单因为触发 STP 而将过期的情况：
         * 新字段 `Cs` 代表 `counterSymbol`
@@ -728,14 +899,14 @@ Websocket API
     ```json
     {
         "code": -2013,
-        "msg": "Order does not exist." 
+        "msg": "Order does not exist."
     }
     ```
     * 现在，错误消息为：
     ```json
     {
         "code": -2026,
-        "msg": "Order was canceled or expired with no executed qty over 90 days ago and has been archived." 
+        "msg": "Order was canceled or expired with no executed qty over 90 days ago and has been archived."
     }
     ```
 * API 请求使用 `startTime` 和 `endTime` 的行为：
@@ -772,7 +943,7 @@ REST API
     * 如果由于 `cancelRestrictions` 而取消订单失败，错误将是：
     ```json
     {
-        "code": -2011, 
+        "code": -2011,
         "msg": "Order was not canceled due to cancel restrictions."
     }
     ```
@@ -784,14 +955,12 @@ WEBSOCKET API
     * 如果由于 `cancelRestrictions` 而取消订单失败，错误将是：
     ```json
     {
-        "code": -2011, 
+        "code": -2011,
         "msg": "Order was not canceled due to cancel restrictions."
     }
     ```
 
 ---
-
-# 更新日志 (2023-02-17)
 
 ### 2023-02-17
 
@@ -808,7 +977,7 @@ WEBSOCKET API
 
 ---
 
-### 2023-01-23 
+### 2023-01-23
 
 * 添加了新的 API 集群 https://api4.binance.com
 
@@ -896,6 +1065,8 @@ USER DATA STREAM
 
 * 现货 WebSocket API 文档已更新，添加了如何使用 RSA key 签署请求。
 
+---
+
 ### 2022-12-26
 
 * 现货的 Websocket API 发布到生产系统中。
@@ -918,6 +1089,8 @@ USER DATA STREAM
 
 **WEBSOCKET API 会晚些时候在生产系统中可用。**
 
+---
+
 ### 2022-12-13
 
 REST API
@@ -932,6 +1105,7 @@ Too much request weight used; current limit is %s request weight per %s. Please 
 Way too much request weight used; IP banned until %s Please use WebSocket Streams for live updates to avoid bans.
 ```
 
+---
 
 ### 2022-12-05
 
@@ -1182,8 +1356,6 @@ WEBSOCKETS
 * `MAX_POSITION` 的更新
     * 如果一个订单的数量(`quantity`) 可能导致持有仓位溢出, 会触发过滤器 `MAX_POSITION`.
 
----
-
 
 * `GET api/v3/aggTrades` 更新
     * 如果同时提供 `startTime` 和 `endTime`, 旧的记录会返回.
@@ -1240,6 +1412,8 @@ USER DATA STREAM
 * User Data Stream 的`executionReport`添加新参数
   * "d" 代表`trailingDelta`
 
+---
+
 ### 2022-04-12
 
 **Note:** 下面的变更会在后面几天上线.
@@ -1264,10 +1438,13 @@ USER DATA STREAM
         * f = -1 // ﬁrst_trade_id
         * l = -1 // last_trade_id
 
+---
+
 ### 2022-02-28
 
 * 在接口`GET /api/v3/exchangeInfo`中添加新字段`allowTrailingStop`.
 
+---
 
 ### 2022-02-24
 
@@ -1291,26 +1468,35 @@ USER DATA STREAM
 ---
 
 
-# 2021-12-29
+### 2021-12-29
 * 移除交易对类型枚举
 * 新增权限枚举
+
+---
 
 ### 2021-11-01
 * 新增接口 `GET /api/v3/rateLimit/order`
     * 回传用户在当前时间区间内的下单总数
     * 此接口的权重为20
 
+---
+
 ### 2021-09-14
 * 添加一个基于OpenAPI规范的RESTful API接口定义的[YAML文件](https://github.com/binance/binance-api-swagger)
+
+---
 
 ### 2021-08-12
 * GET `api/v3/myTrades` 添加新的参数 `orderId`
 
+---
 
 ### 2021-05-12
 * 在文档中添加接口的数据来源说明
 * 在每个接口中添加相应的数据源
 * GET `api/v3/exchangeInfo` 现在支持单个或者多个交易对查询
+
+---
 
 ### 2021-04-26
 
@@ -1324,6 +1510,8 @@ USER DATA STREAM
 * `GET /api/v3/account` 权重改为 10
 * `GET /api/v3/myTrades` 权重改为 10
 * `GET /api/v3/exchangeInfo` 权重改为 10
+
+---
 
 ### 2021-01-01
 
@@ -1405,6 +1593,8 @@ REST API
 USER DATA STREAM
   * 成交报告中增加了 `末次成交金额` (`Y`)，等于 `末次成交量` * `末次成交价格` (`L` * `l`).
 
+---
+
 ### 2018-07-18
 REST API
   *  新过滤器: `ICEBERG_PARTS`
@@ -1425,6 +1615,7 @@ USER DATA STREAM
   *  `cummulativeQuoteQty`/`cummulativeQty` 可以用来计算该订单已经成交部分的平均价格。
   *  成交报告中增加了 `O`字段 (订单创建时间)
 
+---
 
 ### 2018-01-23
   * GET /api/v1/historicalTrades权重降为 5
@@ -1438,6 +1629,8 @@ USER DATA STREAM
   * GET /api/v1/depth limit=1000 权重降为 10
   * websocket 用户增加 -1003 error code
 
+---
+
 ### 2018-01-20
   * GET /api/v1/ticker/24hr 单symbol参数调用权重降为 1
   * GET /api/v3/openOrders 不带symbol参数的权重降为 symbols总数 / 2
@@ -1445,6 +1638,8 @@ USER DATA STREAM
   * GET /api/v3/myTrades  权重降为  15
   * GET /api/v3/order  权重降为  1
   * 自成交现在会在myTrades结果中有两条记录。
+
+---
 
 ### 2018-01-14
   * GET /api/v1/aggTrades 权重改为 2

@@ -1,6 +1,6 @@
-# REST行情与交易接口 
+# REST行情与交易接口
 
-**最近更新： 2024-12-17**
+**最近更新： 2025-04-07**
 
 ## API 基本信息
 * 本篇列出接口的 base URL 有:
@@ -11,11 +11,12 @@
   * **https://api3.binance.com**
   * **https://api4.binance.com**
 * 上述列表的最后4个接口 (`api1`-`api4`) 会提供更好的性能，但其稳定性略为逊色。因此，请务必使用最适合的URL。
-* 所有接口的响应都是 JSON 格式。
+* 响应默认为 JSON 格式。如果您想接收 SBE 格式的响应，请参考 [简单二进制编码 （SBE） 常见问题](./faqs/sbe_faq_CN.md)。
 * 响应中如有数组，数组元素以时间**升序**排列，越早的数据越提前。
-* JSON 响应中的所有时间和时间戳相关字段均以**毫秒为默认单位**。要以微秒为单位接收信息，请添加报文头 `X-MBX-TIME-UNIT：MICROSECOND` 或 `X-MBX-TIME-UNIT：microsecond`。 
+* JSON 响应中的所有时间和时间戳相关字段均以**毫秒为默认单位**。要以微秒为单位接收信息，请添加报文头 `X-MBX-TIME-UNIT：MICROSECOND` 或 `X-MBX-TIME-UNIT：microsecond`。
 * 时间戳参数（例如 `startTime`、`endTime`、`timestamp`）可以以毫秒或微秒为单位传递。
 * 对于仅发送公开市场数据的 API，您可以使用接口的 base URL https://data-api.binance.vision 。请参考 [Market Data Only_CN](./faqs/market_data_only_CN.md) 页面。
+* 如需进一步了解枚举或术语，请参考 [现货交易API术语表](faqs/spot_glossary_CN.md) 页面。
 
 ## HTTP 返回代码
 
@@ -351,12 +352,6 @@ print(response.json())
 
 ## 通用接口
 
-### 术语解释
-这里的术语适用于全部文档，建议特别是新手熟读，也便于理解。
-
-* `base asset` 指一个交易对的交易对象，即写在靠前部分的资产名, 比如`BTCUSDT`, `BTC`是`base asset`。
-* `quote asset` 指一个交易对的定价资产，即写在靠后部分的资产名, 比如`BTCUSDT`, `USDT`是`quote asset`。
-
 <a id="ping"></a>
 
 ### 测试服务器连通性 PING
@@ -375,6 +370,7 @@ NONE
 缓存
 
 **响应:**
+
 ```javascript
 {}
 ```
@@ -397,6 +393,7 @@ NONE
 缓存
 
 **响应:**
+
 ```javascript
 {
   "serverTime": 1499827319559
@@ -419,7 +416,7 @@ GET /api/v3/exchangeInfo
 
 名称 |类型 |是否必须 | 描述
 ------------ |------------ |------------ |------------
-symbol |STRING| No|示例：curl -X GET "https://api.binance.com/api/v3/exchangeInfo?symbol=BNBBTC" 
+symbol |STRING| No|示例：curl -X GET "https://api.binance.com/api/v3/exchangeInfo?symbol=BNBBTC"
 symbols |ARRAY OF STRING|No| 示例：curl -X GET "https://api.binance.com/api/v3/exchangeInfo?symbols=%5B%22BNBBTC%22,%22BTCUSDT%22%5D" <br/> 或 <br/> curl -g -X  GET 'https://api.binance.com/api/v3/exchangeInfo?symbols=["BTCUSDT","BNBBTC"]'
 permissions |ENUM|No|示例：curl -X GET "https://api.binance.com/api/v3/exchangeInfo?permissions=SPOT" <br/> or <br/> curl -X GET "https://api.binance.com/api/v3/exchangeInfo?permissions=%5B%22MARGIN%22%2C%22LEVERAGED%22%5D" <br/> or <br/> curl -g -X GET 'https://api.binance.com/api/v3/exchangeInfo?permissions=["MARGIN","LEVERAGED"]' |
 showPermissionSets|BOOLEAN|No|用于控制是否提供 `permissionSets` 字段的内容。默认为 `true`
@@ -445,6 +442,7 @@ symbolStatus|ENUM|No|用于过滤具有此 `tradingStatus` 的交易对。有效
 缓存
 
 **响应:**
+
 ```javascript
 {
   "timezone": "UTC",
@@ -492,6 +490,9 @@ symbolStatus|ENUM|No|用于过滤具有此 `tradingStatus` 的交易对。有效
       "quoteOrderQtyMarketAllowed": true,
       "allowTrailingStop": false,
       "cancelReplaceAllowed": false,
+      "allowAmend":false,
+      "isSpotTradingAllowed": true,
+      "isMarginTradingAllowed": true,
       "filters": [
         {
           "filterType": "PRICE_FILTER",
@@ -562,12 +563,13 @@ GET /api/v3/depth
 名称 | 类型 | 是否必须 | 描述
 ------------ | ------------ | ------------ | ------------
 symbol | STRING | YES |
-limit | INT | NO | 默认 100; 最大 5000. 可选值:[5, 10, 20, 50, 100, 500, 1000, 5000] <br/> 如果 limit > 5000, 最多返回5000条数据.
+limit | INT | NO | 默认： 100; 最大： 5000。 <br/> 如果 limit > 5000, 最多返回5000条数据.
 
 **数据源:**
 缓存
 
 **响应:**
+
 ```javascript
 {
   "lastUpdateId": 1027024,
@@ -604,12 +606,13 @@ GET /api/v3/trades
 名称 | 类型 | 是否必需 | 描述
 ------------ | ------------ | ------------ | ------------
 symbol | STRING | YES |
-limit | INT | NO | Default 500; max 1000.
+limit | INT | NO | 默认值： 500； 最大值： 1000。
 
 **数据源:**
 缓存
 
 **响应:**
+
 ```javascript
 [
   {
@@ -636,8 +639,8 @@ GET /api/v3/historicalTrades
 名称 | 类型 | 是否必需 | 描述
 ------------ | ------------ | ------------ | ------------
 symbol | STRING | YES |
-limit | INT | NO | Default 500; max 1000.
-fromId | LONG | NO | 从哪一条成交id开始返回. 缺省返回最近的成交记录
+limit | INT | NO | 默认值： 500； 最大值： 1000。
+fromId | LONG | NO | 从哪一条成交id开始返回，缺省返回最近的成交记录
 
 
 **数据源:**
@@ -645,6 +648,7 @@ fromId | LONG | NO | 从哪一条成交id开始返回. 缺省返回最近的成�
 
 
 **响应:**
+
 ```javascript
 [
   {
@@ -667,7 +671,7 @@ GET /api/v3/aggTrades
 与trades的区别是，同一个taker在同一时间同一价格与多个maker的成交会被合并为一条记录
 
 **权重:**
-2
+4
 
 **参数:**
 
@@ -677,7 +681,7 @@ symbol | STRING | YES |
 fromId | LONG | NO | 从包含fromID的成交开始返回结果
 startTime | LONG | NO | 从该时刻之后的成交记录开始返回结果
 endTime | LONG | NO | 返回该时刻为止的成交记录
-limit | INT | NO | 默认 500; 最大 1000.
+limit | INT | NO | 默认值： 500； 最大值： 1000。
 
 * 如果没有发送任何筛选参数(fromId, startTime, endTime)，默认返回最近的成交记录
 
@@ -685,6 +689,7 @@ limit | INT | NO | 默认 500; 最大 1000.
 数据库
 
 **响应:**
+
 ```javascript
 [
   {
@@ -719,8 +724,8 @@ symbol | STRING | YES |
 interval | ENUM | YES |请参考 [`K线间隔`](#kline-intervals)
 startTime | LONG | NO |
 endTime | LONG | NO |
-timeZone |STRING| NO| 默认: 0 (UTC)
-limit | INT | NO | Default 500; max 1000.
+timeZone |STRING| NO| 默认值： 0 (UTC)
+limit | INT | NO | 默认值： 500； 最大值： 1000。
 
 <a id="kline-intervals"></a>
 
@@ -751,6 +756,7 @@ months -> 月  | `1M`
 
 
 **响应:**
+
 ```javascript
 [
   [
@@ -792,8 +798,8 @@ symbol    | STRING | YES          |
 interval  | ENUM   | YES          | 请参考 [`K线间隔`](#kline-intervals)
 startTime | LONG   | NO           |
 endTime   | LONG   | NO           |
-timeZone  | STRING | NO           | Default: 0 (UTC)
-limit     | INT    | NO           | 默认 500; 最大 1000.
+timeZone  | STRING | NO           | 默认值： 0 (UTC)
+limit     | INT    | NO           | 默认值： 500； 最大值： 1000。
 
 * 如果未发送 `startTime` 和 `endTime`，默认返回最近的交易。
 * `timeZone`支持的值包括：
@@ -807,6 +813,7 @@ limit     | INT    | NO           | 默认 500; 最大 1000.
 数据库
 
 **响应:**
+
 ```javascript
 [
   [
@@ -846,6 +853,7 @@ symbol | STRING | YES |
 
 
 **响应:**
+
 ```javascript
 {
   "mins": 5,
@@ -943,6 +951,7 @@ GET /api/v3/ticker/24hr
 缓存
 
 **响应 - FULL:**
+
 ```javascript
 {
   "symbol": "BNBBTC",
@@ -1061,7 +1070,7 @@ GET /api/v3/ticker/tradingDay
 
 **权重:**
 
-每个<tt>交易对</tt>占用4个权重. <br/><br/> 
+每个<tt>交易对</tt>占用4个权重. <br/><br/>
 当请求中的交易对数量超过50，此请求的权重将限制在200。
 
 **参数:**
@@ -1304,6 +1313,7 @@ GET /api/v3/ticker/price
 缓存
 
 **响应:**
+
 ```javascript
 {
   "symbol": "LTCBTC",
@@ -1311,6 +1321,7 @@ GET /api/v3/ticker/price
 }
 ```
 OR
+
 ```javascript
 [
   {
@@ -1400,6 +1411,7 @@ GET /api/v3/ticker/bookTicker
 
 
 **响应:**
+
 ```javascript
 {
   "symbol": "LTCBTC",
@@ -1607,7 +1619,7 @@ GET /api/v3/ticker
 ## 交易接口
 ### 下单 (TRADE)
 ```
-POST /api/v3/order 
+POST /api/v3/order
 ```
 
 **权重:**
@@ -1782,7 +1794,7 @@ Type | 强制要求的参数 | 其他信息
 ### 测试下单接口 (TRADE)
 
 ```
-POST /api/v3/order/test 
+POST /api/v3/order/test
 ```
 
 用于测试订单请求，但不会提交到撮合引擎
@@ -1855,13 +1867,15 @@ recvWindow | LONG | NO |
 timestamp | LONG | YES |
 
 **注意:**
-* 至少需要发送 `orderId` 与 `origClientOrderId`中的一个
-* 某些订单中`cummulativeQuoteQty`<0，是由于这些订单是cummulativeQuoteQty功能上线之前的订单。
+* 至少需要发送 `orderId` 与 `origClientOrderId`中的一个。
+* 当同时提供 `orderId` 和 `origClientOrderId` 两个参数时，系统首先将会使用 `orderId` 来搜索订单。然后， 查找结果中的 `origClientOrderId` 的值将会被用来验证订单。如果两个条件都不满足，则请求将被拒绝。
+* 某些订单中 `cummulativeQuoteQty`<0，是由于这些订单是cummulativeQuoteQty功能上线之前的订单。
 
 **数据源:**
 缓存 => 数据库
 
 **响应:**
+
 ```javascript
 {
   "symbol": "LTCBTC",               // 交易对
@@ -1892,7 +1906,7 @@ timestamp | LONG | YES |
 
 ### 撤销订单 (TRADE)
 ```
-DELETE /api/v3/order 
+DELETE /api/v3/order
 ```
 
 **权重:**
@@ -1910,8 +1924,9 @@ cancelRestrictions| ENUM | NO | 支持的值: <br>`ONLY_NEW` - 如果订单状�
 recvWindow | LONG | NO |
 timestamp | LONG | YES |
 
-* `orderId` 与 `origClientOrderId` 必须至少发送一个.
-* 如果两个参数一起发送, `orderId`优先被考虑.
+**注意:**
+* `orderId` 与 `origClientOrderId` 必须至少发送一个。
+* 当同时提供 `orderId` 和 `origClientOrderId` 两个参数时，系统首先将会使用 `orderId` 来搜索订单。然后， 查找结果中的 `origClientOrderId` 的值将会被用来验证订单。如果两个条件都不满足，则请求将被拒绝。
 
 **数据源:**
 撮合引擎
@@ -1939,6 +1954,7 @@ timestamp | LONG | YES |
 ```
 
 **注意:** 上面的 payload 没有显示所有可以出现的字段，更多请看 [订单响应中的特定条件时才会出现的字段](#conditional-fields-in-order-responses) 部分。
+* 当仅发送 `orderId` 时,取消订单的执行(单个 Cancel 或作为 Cancel-Replace 的一部分)总是更快。发送 `origClientOrderId` 或同时发送 `orderId` + `origClientOrderId` 会稍慢。
 
 <a id="regarding-cancelrestrictions"></a>
 
@@ -1975,7 +1991,7 @@ DELETE /api/v3/openOrders
 名称 | 类型 | 是否必需 | 描述
 ------------ | ------------ | ------------ | ------------
 symbol | STRING | YES |
-recvWindow | LONG | NO | 不能大于 ```60000```
+recvWindow | LONG | NO | 不能大于 `60000`
 timestamp | LONG | YES |
 
 **数据源:**
@@ -2113,13 +2129,13 @@ quantity|DECIMAL|NO|
 quoteOrderQty |DECIMAL|NO
 price |DECIMAL|NO
 cancelNewClientOrderId|STRING|NO | 用户自定义的id，如空缺系统会自动赋值
-cancelOrigClientOrderId|STRING| NO| 必须提供`cancelOrigClientOrderId` 或者 `cancelOrderId`。 如果两个参数都提供, `cancelOrderId` 会占优先。
-cancelOrderId|LONG|NO| 必须提供`cancelOrigClientOrderId` 或者 `cancelOrderId`。 如果两个参数都提供，`cancelOrderId` 会占优先。
+cancelOrigClientOrderId|STRING| NO| 必须提供 `cancelOrderId` 或者 `cancelOrigClientOrderId`。 <br></br> 当同时提供 `cancelOrderId` 和 `cancelOrigClientOrderId` 两个参数时，系统首先将会使用 `cancelOrderId` 来搜索订单。<br></br> 然后， 查找结果中的 `cancelOrigClientOrderId` 的值将会被用来验证订单。<br></br> 如果两个条件都不满足，则请求将被拒绝。
+cancelOrderId|LONG|NO| 必须提供 `cancelOrderId` 或者 `cancelOrigClientOrderId`。 <br></br> 当同时提供 `cancelOrderId` 和 `cancelOrigClientOrderId` 两个参数时，系统首先将会使用 `cancelOrderId` 来搜索订单。<br></br> 然后， 查找结果中的 `cancelOrigClientOrderId` 的值将会被用来验证订单。<br></br> 如果两个条件都不满足，则请求将被拒绝。
 newClientOrderId |STRING|NO| 用于辨识新订单。
 strategyId |LONG| NO|
 strategyType |INT| NO| 不能低于 `1000000`。
 stopPrice|DECIMAL|NO|
-trailingDelta|LONG|NO|
+trailingDelta|LONG|NO| 参考 [追踪止盈止损(Trailing Stop)订单常见问题](faqs/trailing-stop-faq_CN.md)
 icebergQty|DECIMAL|NO|
 newOrderRespType|ENUM|NO|指定响应类型: <br/> 指定响应类型 `ACK`, `RESULT`, or `FULL`; `MARKET` 与 `LIMIT` 订单默认为`FULL`， 其他默认为`ACK`。
 selfTradePreventionMode|ENUM|NO|允许的 ENUM 取决于交易对的配置。支持的值有：[STP 模式](./enums_CN.md#stpmodes)。
@@ -2445,7 +2461,7 @@ timestamp | LONG | YES |
 ```javascript
 {
   "code": -1015,
-  "msg": "Too many new orders; current limit is 1 orders per 10 SECOND." 
+  "msg": "Too many new orders; current limit is 1 orders per 10 SECOND."
 }
 ```
 
@@ -2474,12 +2490,123 @@ timestamp | LONG | YES |
       "timeInForce": "GTC",
       "type": "LIMIT",
       "side": "SELL",
-      "selfTradePreventionMode": "NONE" 
+      "selfTradePreventionMode": "NONE"
     },
     "newOrderResponse": {
       "code": -1015,
-      "msg": "Too many new orders; current limit is 1 orders per 10 SECOND." 
+      "msg": "Too many new orders; current limit is 1 orders per 10 SECOND."
     }
+  }
+}
+```
+
+**注意:**
+* 上面的 payload 没有显示所有可以出现的字段，更多请看 [订单响应中的特定条件时才会出现的字段](#conditional-fields-in-order-responses) 部分。
+* 当仅发送 `orderId` 时,取消订单的执行(单个 Cancel 或作为 Cancel-Replace 的一部分)总是更快。发送 `origClientOrderId` 或同时发送 `orderId` + `origClientOrderId` 会稍慢。
+
+### 修改订单并保留优先级 (TRADE)
+
+```
+PUT /api/v3/order/amend/keepPriority
+```
+
+由客户发送以减少其现有当前订单的原始数量。
+
+请阅读 [保留优先权的修改订单常见问题](faqs/order_amend_keep_priority_CN.md) 了解更多信息。
+
+**权重:**
+1
+
+**参数:**
+
+名称 | 类型 | 是否必需 | 描述
+------------ | ------------ | ------------ | ------------
+ symbol | STRING | YES |
+ orderId | LONG | NO\* | 需提供 `orderId` 或 `origClientOrderId`。
+ origClientOrderId | STRING | NO\* | 需提供 `orderId` 或 `origClientOrderId`。
+ newClientOrderId | STRING | NO\* | 订单在被修改后被赋予的新 client order ID。  <br> 如果未发送则自动生成。 <br> 可以将当前 clientOrderId 作为 `newClientOrderId` 发送来重用当前 clientOrderId 的值。
+ newQty | DECIMAL | YES | 交易的新数量。 `newQty` 必须大于0, 但是必须比订单的原始数量小。
+recvWindow | LONG | NO |
+timestamp | LONG | YES |
+
+
+**数据源:**
+撮合引擎
+
+**来自单个订单的响应：**
+
+```json
+{
+  "transactTime": 1741926410255,
+  "executionId": 75,
+  "amendedOrder":
+  {
+    "symbol": "BTCUSDT",
+    "orderId": 33,
+    "orderListId": -1,
+    "origClientOrderId": "5xrgbMyg6z36NzBn2pbT8H",
+    "clientOrderId": "PFaq6hIHxqFENGfdtn4J6Q",
+    "price": "6.00000000",
+    "qty": "5.00000000",
+    "executedQty": "0.00000000",
+    "preventedQty": "0.00000000",
+    "quoteOrderQty": "0.00000000",
+    "cumulativeQuoteQty": "0.00000000",
+    "status": "NEW",
+    "timeInForce": "GTC",
+    "type": "LIMIT",
+    "side": "SELL",
+    "workingTime": 1741926410242,
+    "selfTradePreventionMode": "NONE"
+  }
+}
+```
+
+**来自订单列表中单个订单的响应：**
+
+```json
+{
+  "transactTime": 1741669661670,
+  "executionId": 22,
+  "amendedOrder":
+  {
+    "symbol": "BTCUSDT",
+    "orderId": 9,
+    "orderListId": 1,
+    "origClientOrderId": "W0fJ9fiLKHOJutovPK3oJp",
+    "clientOrderId": "UQ1Np3bmQ71jJzsSDW9Vpi",
+    "price": "0.00000000",
+    "qty": "4.00000000",
+    "executedQty": "0.00000000",
+    "preventedQty": "0.00000000",
+    "quoteOrderQty": "0.00000000",
+    "cumulativeQuoteQty": "0.00000000",
+    "status": "PENDING_NEW",
+    "timeInForce": "GTC",
+    "type": "MARKET",
+    "side": "BUY",
+    "selfTradePreventionMode": "NONE"
+  },
+  "listStatus":
+  {
+    "orderListId": 1,
+    "contingencyType": "OTO",
+    "listOrderStatus": "EXECUTING",
+    "listClientOrderId": "AT7FTxZXylVSwRoZs52mt3",
+    "symbol": "BTCUSDT",
+    "orders":
+    [
+      {
+        "symbol": "BTCUSDT",
+        "orderId": 8,
+        "clientOrderId": "GkwwHZUUbFtZOoH1YsZk9Q"
+      },
+      {
+        "symbol": "BTCUSDT",
+        "orderId": 9,
+        "clientOrderId": "UQ1Np3bmQ71jJzsSDW9Vpi"
+      }
+    ]
   }
 }
 ```
@@ -2488,7 +2615,7 @@ timestamp | LONG | YES |
 
 ### 查看账户当前挂单 (USER_DATA)
 ```
-GET /api/v3/openOrders 
+GET /api/v3/openOrders
 ```
 请小心使用不带symbol参数的调用
 
@@ -2542,7 +2669,7 @@ timestamp | LONG | YES |
 
 ### 查询所有订单（包括历史订单） (USER_DATA)
 ```
-GET /api/v3/allOrders 
+GET /api/v3/allOrders
 ```
 
 **权重:**
@@ -2556,7 +2683,7 @@ symbol | STRING | YES |
 orderId | LONG | NO | 只返回此orderID之后的订单，缺省返回最近的订单
 startTime | LONG | NO |
 endTime | LONG | NO |
-limit | INT | NO | Default 500; max 1000.
+limit | INT | NO | 默认值： 500； 最大值： 1000
 recvWindow | LONG | NO |
 timestamp | LONG | YES |
 
@@ -2606,7 +2733,7 @@ timestamp | LONG | YES |
 #### 发送新 OCO 订单 - 已弃用 (TRADE)
 
 ```
-POST /api/v3/order/oco 
+POST /api/v3/order/oco
 ```
 
 **权重:** 1
@@ -2727,15 +2854,15 @@ POST /api/v3/orderList/oco
 * OCO 包含了两个订单，分别被称为 **上方订单** 和 **下方订单**。
 * 其中一个订单必须是 `LIMIT_MAKER/TAKE_PROFIT/TAKE_PROFIT_LIMIT` 订单，另一个订单必须是 `STOP_LOSS` 或 `STOP_LOSS_LIMIT` 订单。
 * 针对价格限制：
-  * 如果 OCO 订单方向是 `SELL`： 
-    * `LIMIT_MAKER/TAKE_PROFIT_LIMIT` `price` > 最后交易价格 >  `STOP_LOSS/STOP_LOSS_LIMIT` `stopPrice`  
-    * `TAKE_PROFIT` `stopPrice` > 最后交易价格 > `STOP_LOSS/STOP_LOSS_LIMIT` `stopPrice`   
+  * 如果 OCO 订单方向是 `SELL`：
+    * `LIMIT_MAKER/TAKE_PROFIT_LIMIT` `price` > 最后交易价格 >  `STOP_LOSS/STOP_LOSS_LIMIT` `stopPrice`
+    * `TAKE_PROFIT` `stopPrice` > 最后交易价格 > `STOP_LOSS/STOP_LOSS_LIMIT` `stopPrice`
   * 如果 OCO 订单方向是 `BUY`：
-    * `LIMIT_MAKER/TAKE_PROFIT_LIMIT` `price` < 最后交易价格 < `stopPrice`  
+    * `LIMIT_MAKER/TAKE_PROFIT_LIMIT` `price` < 最后交易价格 < `stopPrice`
     * `TAKE_PROFIT` `stopPrice` < 最后交易价格 < `STOP_LOSS/STOP_LOSS_LIMIT` `stopPrice`
 
 
-**权重:** 
+**权重:**
 1
 
 **参数:**
@@ -2767,7 +2894,7 @@ belowStrategyType      |INT     |No         |下方订单策略的任意数值�
 newOrderRespType       |ENUM    |No         |响应格式可选值: `ACK`, `RESULT`, `FULL`。
 selfTradePreventionMode|ENUM    |No         |允许的 ENUM 取决于交易对上的配置。 支持值：[STP 模式](./enums_CN.md#stpmodes)。
 recvWindow             |LONG   |No          |不能大于 `60000`。
-timestamp              |LONG   |Yes         | 
+timestamp              |LONG   |Yes         |
 
 **数据源:**
 撮合引擎
@@ -2857,7 +2984,7 @@ POST /api/v3/orderList/oto
 * 如果生效订单在下订单列表后**立即完全成交**，则可能会得到订单响应。其中，生效订单的状态为 `FILLED` ，但待处理订单的状态为 `PENDING_NEW`。针对这类情况，如果需要检查当前状态，您可以查询相关的待处理订单。
 * `OTO` 订单将**2 个订单**添加到未成交订单计数，`EXCHANGE_MAX_NUM_ORDERS` 过滤器和 `MAX_NUM_ORDERS` 过滤器中。
 
-**权重:** 
+**权重:**
 1
 
 **参数:**
@@ -2872,7 +2999,7 @@ workingType            |ENUM   |YES       |支持的数值： `LIMIT`， `LIMIT_
 workingSide            |ENUM   |YES       |支持的数值： [订单方向](./enums_CN.md#side)
 workingClientOrderId   |STRING |NO        |用于标识生效订单的唯一ID。 <br> 如果未发送则自动生成。
 workingPrice           |DECIMAL|YES       |
-workingQuantity        |DECIMAL|YES       |用于设置生效订单的数量。 
+workingQuantity        |DECIMAL|YES       |用于设置生效订单的数量。
 workingIcebergQty      |DECIMAL|NO       |只有当 `workingTimeInForce` 为 `GTC` 时才能使用。
 workingTimeInForce     |ENUM   |NO        |支持的数值： [生效时间](./enums_CN.md#timeinforce)
 workingStrategyId      |LONG    |NO        |订单策略中用于标识生效订单的 ID。
@@ -2883,7 +3010,7 @@ pendingClientOrderId   |STRING |NO        |用于标识待处理订单的唯一I
 pendingPrice           |DECIMAL|NO        |
 pendingStopPrice       |DECIMAL|NO        |
 pendingTrailingDelta   |DECIMAL|NO        |
-pendingQuantity        |DECIMAL|YES       |用于设置待处理订单的数量。 
+pendingQuantity        |DECIMAL|YES       |用于设置待处理订单的数量。
 pendingIcebergQty      |DECIMAL|NO        |只有当 `pendingTimeInForce` 为 `GTC` 或者当 `pendingType` 为 `LIMIT_MAKER` 时才能使用。
 pendingTimeInForce     |ENUM   |NO        |支持的数值： [生效时间](./enums_CN.md#timeinforce)
 pendingStrategyId      |LONG    |NO        |订单策略中用于标识待处理订单的 ID。
@@ -2898,8 +3025,8 @@ timestamp              |LONG   |YES       |
 根据 `pendingType` 或者`workingType`的不同值，对于某些可选参数有强制要求，具体如下：
 
 |类型                                                   | 强制要求的参数                  | 其他信息|
-|----                                                  |----                           |------  
-|`workingType` = `LIMIT`                               |`workingTimeInForce`           | 
+|----                                                  |----                           |------
+|`workingType` = `LIMIT`                               |`workingTimeInForce`           |
 |`pendingType` = `LIMIT`                                |`pendingPrice`， `pendingTimeInForce`          |
 |`pendingType` = `STOP_LOSS` 或 `TAKE_PROFIT`           |`pendingStopPrice` 与/或 `pendingTrailingDelta`|
 |`pendingType` = `STOP_LOSS_LIMIT` 或 `TAKE_PROFIT_LIMIT`|`pendingPrice`， `pendingStopPrice` 与/或 `pendingTrailingDelta`， `pendingTimeInForce`|
@@ -2991,7 +3118,7 @@ POST /api/v3/orderList/otoco
 * `OTOCO` 在未成交订单计数，`EXCHANGE_MAX_NUM_ORDERS` 过滤器和 `MAX_NUM_ORDERS` 过滤器的基础上添加**3个订单**。
 
 
-**权重:** 
+**权重:**
 1
 
 **参数:**
@@ -3017,7 +3144,7 @@ pendingAboveType         |ENUM   |YES       |支持的数值： `STOP_LOSS_LIMIT
 pendingAboveClientOrderId|STRING |NO        |用于标识待处理上方订单的唯一ID。 <br> 如果未发送则自动生成。
 pendingAbovePrice        |DECIMAL|NO        |当 `pendingAboveType` 是 `STOP_LOSS_LIMIT`, `LIMIT_MAKER` 或 `TAKE_PROFIT_LIMIT` 时，可用以指定限价。
 pendingAboveStopPrice    |DECIMAL|NO        |如果 `pendingAboveType` 是 `STOP_LOSS`, `STOP_LOSS_LIMIT`, `TAKE_PROFIT`, `TAKE_PROFIT_LIMIT` 才能使用。
-pendingAboveTrailingDelta|DECIMAL|NO        |参见 [追踪止盈止损(Trailing Stop)订单常见问题](./faqs/trailing-stop-faq_CN.md) 
+pendingAboveTrailingDelta|DECIMAL|NO        |参见 [追踪止盈止损(Trailing Stop)订单常见问题](./faqs/trailing-stop-faq_CN.md)
 pendingAboveIcebergQty   |DECIMAL|NO        |只有当 `pendingAboveTimeInForce` 为 `GTC` 时才能使用。
 pendingAboveTimeInForce  |ENUM   |NO        |
 pendingAboveStrategyId   |LONG    |NO        |订单策略中用于标识待处理上方订单的 ID。
@@ -3041,8 +3168,8 @@ timestamp                |LONG   |YES       |
 根据 `pendingAboveType`， `pendingBelowType` 或者`workingType`的不同值，对于某些可选参数有强制要求，具体如下：
 
 |类型                                                        | 强制要求的参数                  | 其他信息|
-|----                                                       |----                           |------  
-|`workingType` = `LIMIT`                                    |`workingTimeInForce`           | 
+|----                                                       |----                           |------
+|`workingType` = `LIMIT`                                    |`workingTimeInForce`           |
 |`pendingAboveType` = `LIMIT_MAKER`                                |`pendingAbovePrice`     |
 |`pendingAboveType` = `STOP_LOSS/TAKE_PROFIT` | `pendingAboveStopPrice` 与/或  `pendingAboveTrailingDelta` |
 |`pendingAboveType` = `STOP_LOSS_LIMIT/TAKE_PROFIT_LIMIT` | `pendingAbovePrice`， `pendingAboveStopPrice` 与/或 `pendingAboveTrailingDelta`， `pendingAboveTimeInForce` |
@@ -3148,7 +3275,7 @@ timestamp                |LONG   |YES       |
 #### 取消订单列表 (TRADE)
 
 ``
-DELETE /api/v3/orderList 
+DELETE /api/v3/orderList
 ``
 
 取消整个订单列表。
@@ -3169,7 +3296,7 @@ timestamp|LONG|YES|
 其他注意点:
 
 * 取消订单列表中的单个订单将取消整个订单列表.
-* 如果 `orderListId` 和 `listClientOrderId` 一起发送, `orderListId` 优先被考虑.
+* 当同时提供 `orderListId` 和 `listClientOrderId` 两个参数时，系统首先将会使用 `orderListId` 来搜索订单。然后， 查找结果中的 `listClientOrderId` 的值将会被用来验证订单。如果两个条件都不满足，则请求将被拒绝。
 
 
 **数据源:**
@@ -3241,7 +3368,7 @@ timestamp|LONG|YES|
 #### 查询订单列表 (USER_DATA)
 
 ``
-GET /api/v3/orderList 
+GET /api/v3/orderList
 ``
 
 根据提供的可选参数检索特定的订单列表。
@@ -3252,9 +3379,9 @@ GET /api/v3/orderList
 
 名称| 类型|是否必需| 描述
 ----|-----|----|----------
-orderListId|LONG|NO|   ```orderListId``` 或 ```origClientOrderId``` 必须提供一个。
-origClientOrderId|STRING|NO|  ```orderListId``` 或 ```origClientOrderId``` 必须提供一个。
-recvWindow|LONG|NO| 赋值不得大于 ```60000```
+orderListId|LONG|NO|   `orderListId` 或 `origClientOrderId` 必须提供一个。
+origClientOrderId|STRING|NO|  `orderListId` 或 `origClientOrderId` 必须提供一个。
+recvWindow|LONG|NO| 赋值不得大于 `60000`
 timestamp|LONG|YES|
 
 **数据源:**
@@ -3289,7 +3416,7 @@ timestamp|LONG|YES|
 #### 查询所有订单列表 (USER_DATA)
 
 ``
-GET /api/v3/allOrderList 
+GET /api/v3/allOrderList
 ``
 
 根据提供的可选参数检索所有的订单列表。
@@ -3305,7 +3432,7 @@ GET /api/v3/allOrderList
 fromId|LONG|NO| 提供该项后, `startTime` 和 `endTime` 都不可提供
 startTime|LONG|NO|
 endTime|LONG|NO|
-limit|INT|NO| 默认值: 500; 最大值: 1000
+limit|INT|NO| 默认值： 500； 最大值： 1000
 recvWindow|LONG|NO| 赋值不能超过 `60000`
 timestamp|LONG|YES|
 
@@ -3373,7 +3500,7 @@ GET /api/v3/openOrderList
 
 名称| 类型|是否必需| 描述
 ----|-----|---|------------------
-recvWindow|LONG|NO| 赋值不能大于 ```60000```
+recvWindow|LONG|NO| 赋值不能大于 `60000`
 timestamp|LONG|YES|
 
 
@@ -3477,7 +3604,7 @@ timestamp               | LONG | YES |
       "allocId": 0
     }
   ],
-  "workingFloor": "SOR",              
+  "workingFloor": "SOR",
   "selfTradePreventionMode": "NONE",
   "usedSor": true
 }
@@ -3546,7 +3673,7 @@ computeCommissionRates | BOOLEAN      | NO            | 默认值: `false`
 
 ### 账户信息 (USER_DATA)
 ```
-GET /api/v3/account 
+GET /api/v3/account
 ```
 
 **权重:**
@@ -3605,30 +3732,34 @@ timestamp | LONG | YES |
 
 ### 账户成交历史 (USER_DATA)
 ```
-GET /api/v3/myTrades  
+GET /api/v3/myTrades
 ```
 获取某交易对的成交历史
 
 **权重:**
-20
+
+条件| 权重|
+---| ---
+没有 orderId|20
+有 orderId|5
 
 **参数:**
 
 名称 | 类型 | 是否必需 | 描述
 ------------ | ------------ | ------------ | ------------
 symbol | STRING | YES |
-orderId|LONG|NO| 必须要和参数`symbol`一起使用.
+orderId|LONG|NO| 必须要和参数`symbol`一起使用。
 startTime | LONG | NO |
 endTime | LONG | NO |
 fromId | LONG | NO |返回该fromId之后的成交，缺省返回最近的成交
-limit | INT | NO | Default 500; max 1000.
+limit | INT | NO | 默认值： 500； 最大值： 1000
 recvWindow | LONG | NO |
 timestamp | LONG | YES |
 
 
 **备注:**
-* 如果设置了`fromId`, 会返回ID大于此`fromId`的交易. 不然则会返回最近的交易.
-* `startTime`和`endTime`设置的时间间隔不能超过24小时.
+* 如果设置了 `fromId`, 会返回ID大于此 `fromId` 的交易. 不然则会返回最近的交易。
+* `startTime` 和 `endTime` 设置的时间间隔不能超过24小时。
 * 支持的所有参数组合:
   * `symbol`
   * `symbol` + `orderId`
@@ -3724,7 +3855,7 @@ symbol              | STRING | YES          |
 preventedMatchId    |LONG    | NO           |
 orderId             |LONG    | NO           |
 fromPreventedMatchId|LONG    | NO           |
-limit               |INT     | NO           | 默认：`500`；最大：`1000`
+limit               |INT     | NO           | 默认值： 500； 最大值： 1000。
 recvWindow          | LONG   | NO           | 赋值不得大于 `60000`
 timestamp           | LONG   | YES          |
 
@@ -3778,7 +3909,7 @@ symbol                   |STRING |Yes        |
 startTime                |LONG   |No        |
 endTime                  |LONG   |No        |
 fromAllocationId         |INT    |No        |
-limit                    |INT    |No        |默认值 500； 最大值 1000
+limit                    |INT    |No        |默认值： 500； 最大值： 1000
 orderId                  |LONG   |No        |
 recvWindow               |LONG   |No        |不能大于 `60000`
 timestamp                |LONG   |No        |
@@ -3854,13 +3985,13 @@ symbol        | STRING | YES          |
     "maker": "0.00000010",
     "taker": "0.00000020",
     "buyer": "0.00000030",
-    "seller": "0.00000040" 
+    "seller": "0.00000040"
   },
   "taxCommission": {              // 订单交易的税率。
     "maker": "0.00000112",
     "taker": "0.00000114",
     "buyer": "0.00000118",
-    "seller": "0.00000116" 
+    "seller": "0.00000116"
   },
   "discount": {                   // 使用BNB支付时的佣金折扣。
     "enabledForAccount": true,
@@ -3871,11 +4002,69 @@ symbol        | STRING | YES          |
 }
 ```
 
+### 查询改单 (USER_DATA)
+
+```
+GET /api/v3/order/amendments
+```
+
+查询对一个订单的所有改单操作。
+
+**权重:**
+4
+
+**参数:**
+
+参数名         | 类型    | 是否必需 | 描述
+------------ | -----   | ------------ | ------------
+ symbol | STRING | YES |
+ orderId | LONG | YES |
+ fromExecutionId | LONG | NO |
+ limit | LONG | NO | 默认值： 500； 最大值： 1000
+ recvWindow | LONG | NO | 不能大于 `60000`
+timestamp | LONG | YES |
+
+**数据源:**
+数据库
+
+**响应:**
+
+```json
+[
+  {
+      "symbol": "BTCUSDT",
+      "orderId": 9,
+      "executionId": 22,
+      "origClientOrderId": "W0fJ9fiLKHOJutovPK3oJp",
+      "newClientOrderId": "UQ1Np3bmQ71jJzsSDW9Vpi",
+      "origQty": "5.00000000",
+      "newQty": "4.00000000",
+      "time": 1741669661670
+  },
+  {
+      "symbol": "BTCUDST",
+      "orderId": 9,
+      "executionId": 25,
+      "origClientOrderId": "UQ1Np3bmQ71jJzsSDW9Vpi",
+      "newClientOrderId": "5uS0r35ohuQyDlCzZuYXq2",
+      "origQty": "4.00000000",
+      "newQty": "3.00000000",
+      "time": 1741672924895
+  }
+]
+```
+
+<a id="user-data-stream-requests"></a>
 
 ## 用户数据流订阅接口
-此处仅列出如何得到数据流名称及如何维持有效期的接口，具体订阅方式参考另一篇websocket接口文档
 
-### 新建用户数据流 (USER_STREAM)
+> [!IMPORTANT]
+> 这些请求已被弃用，这意味着我们以后会删除这些请求。
+> 请通过订阅 [WebSocket API](web-socket-api_CN.md) 来获得用户账户更新。
+
+以下请求管理 [WebSocket 帐户信息](user-data-stream_CN.md) 订阅。
+
+### 新建用户数据流 (USER_STREAM) (已弃用)
 ```
 POST /api/v3/userDataStream
 ```
@@ -3892,13 +4081,14 @@ NONE
 
 
 **响应:**
+
 ```javascript
 {
   "listenKey": "pqia91ma19a5s61cv6a81va65sdf19v8a65a1a5s61cv6a81va65sdf19v8a65a1" // 用于订阅的数据流名
 }
 ```
 
-### Keepalive (USER_STREAM)
+### Keepalive (USER_STREAM) (已弃用)
 ```
 PUT /api/v3/userDataStream
 ```
@@ -3917,11 +4107,12 @@ listenKey | STRING | YES
 缓存
 
 **响应:**
+
 ```javascript
 {}
 ```
 
-### 关闭用户数据流 (USER_STREAM)
+### 关闭用户数据流 (USER_STREAM) (已弃用)
 ```
 DELETE /api/v3/userDataStream
 ```
@@ -3940,6 +4131,7 @@ listenKey | STRING | YES
 缓存
 
 **响应:**
+
 ```javascript
 {}
 ```
